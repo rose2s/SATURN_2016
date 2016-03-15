@@ -1,0 +1,157 @@
+package controller
+public
+	with data_types;
+	with abstracts;
+	with Base_Types;
+
+	
+	abstract generic_controller
+		features
+			sensor1_data_in:    in data port;
+			sensor2_data_in:    in data port;
+			sensor3_data_in:    in data port;
+			sensor4_data_in:    in data port;
+			feedback: 			out event data port data_types::cmd;
+			UI_inverse_ports:	feature group inverse of abstracts::UI_ports;
+			current_speed:	    out data port data_types::speed;
+			brake_failed:       in event data port;	
+			
+			driverSelection: out data port Base_Types::Integer;
+            targetSpeed:     out data port Base_Types::Integer;
+            actualSpeed:     out data port Base_Types::Integer;
+            gap:             out data port Base_Types::Integer;
+            
+            gapLimit: 		out data port Base_Types::Integer;
+        
+		flows
+			UI_sink    		  : flow sink UI_inverse_ports;
+			controller_path0a : flow path sensor1_data_in -> current_speed;		-- path to actuators
+			controller_path1a : flow path sensor2_data_in -> current_speed;
+			controller_path2a : flow path sensor3_data_in -> current_speed;
+			controller_path3a : flow path sensor4_data_in -> current_speed;
+			controller_path0b : flow path sensor1_data_in -> feedback;	        -- path to UI	
+			controller_path1b : flow path sensor2_data_in -> feedback;
+			controller_path2b : flow path sensor3_data_in -> feedback;
+			controller_path3b : flow path sensor4_data_in -> feedback;
+		
+		properties
+			Latency => 5 ms .. 7 ms applies to controller_path0a, controller_path1a, controller_path2a, controller_path3a ;
+			Latency => 3 ms .. 4 ms applies to controller_path0b, controller_path1b, controller_path2b, controller_path3b ;
+				
+	end generic_controller;		
+	
+	abstract implementation generic_controller.threads
+		subcomponents
+			thread_radar: 			abstract read_sensor.impl;
+			thread_camera: 		    abstract read_sensor.impl;
+			thread_gps: 			abstract read_sensor.impl;
+			thread_speedometer:		abstract read_sensor.impl;
+			thread_controller:      abstract thread_controller.impl;
+			control_modal:			abstract control_modal.impl;
+			preferences:			abstract preferences.impl;
+		
+		annex EMV2 {**
+			use types     error_library;
+			use behavior  error_library::stateMachine;
+
+			error propagations
+				sensor1_data_in : in propagation {NoValue, BadValue, LateValue};
+				sensor2_data_in	: in propagation {NoValue, BadValue, LateValue};
+				sensor3_data_in	: in propagation {NoValue, BadValue, LateValue};
+				sensor4_data_in	: in propagation {NoValue, BadValue, LateValue};
+				brake_failed	: in propagation {InvalidValue, NoValue, BadValue}; 
+			flows
+				nosensor1	: error sink sensor1_data_in{NoValue, BadValue, LateValue};
+				nosensor2	: error sink sensor2_data_in{NoValue, BadValue, LateValue};
+				nosensor3	: error sink sensor3_data_in{NoValue, BadValue, LateValue};
+				nosensor4	: error sink sensor4_data_in{NoValue, BadValue, LateValue};
+				ef5 		: error sink brake_failed {InvalidValue, NoValue, BadValue};
+		
+			end propagations;
+			
+			component error behavior
+			events
+				sensor_doesnt_work   :   error event;
+				RecoverEvent 		 : recover event;
+				
+			transitions
+				t0 : Operational -[brake_failed{InvalidValue, NoValue, BadValue}]->   Failed;
+				t1 : Operational -[sensor_doesnt_work]-> Failed;
+				t2 : Failed 	 -[RecoverEvent]-> Operational;
+			end component;	
+		**};
+	end generic_controller.threads;
+	
+	-- threads declaration
+	abstract read_sensor
+		features
+			sensor_in:   in data port;
+			sensor_out:  out data port data_types::cmd;
+		flows
+			thread_path0 : flow path sensor_in -> sensor_out;		
+		properties
+			latency => 3 ms .. 4 ms applies to thread_path0;
+			Dispatch_Protocol => Periodic;
+			Period => 20ms;			
+	end read_sensor;
+	 
+	abstract implementation read_sensor.impl
+	end read_sensor.impl;
+	
+	abstract thread_controller
+		features
+			data_in:    in data port;
+			data_out: 	out event data port;
+		flows
+			controller_thread_path0 : flow path data_in -> data_out;		
+		properties
+			latency => 3 ms .. 4 ms applies to controller_thread_path0;
+			Dispatch_Protocol => Periodic;
+			Period => 20ms;
+				
+	end thread_controller;
+	
+	abstract implementation thread_controller.impl
+	end thread_controller.impl;
+	
+	abstract control_modal
+		features
+			speed_limit: in data port Base_Types::Integer;
+			sensor_data: in event port;
+			feedback: 	out event data port data_types::cmd;
+			UI_ports: 	feature group inverse of abstracts::UI_ports;
+			cmd: 		out data port;
+	flows
+			control_modal_path0 :   flow path sensor_data -> cmd;
+			control_modal_path1 :   flow path sensor_data ->feedback;
+			UI_sink:			    flow sink UI_ports;
+		properties
+			Dispatch_Protocol => Periodic;
+			Period => 20ms;
+	end control_modal;
+	
+	abstract implementation control_modal.impl
+	end control_modal.impl;
+	
+	abstract preferences
+		features
+			speed_limit: out data port Base_Types::Integer;
+	end preferences;
+	
+	abstract implementation preferences.impl
+	end preferences.impl;
+	
+	abstract speed_controller
+		features
+			current_speed: in data port data_types::speed;
+			cmd: out data port data_types::cmd;
+		flows
+			speed_path: flow path current_speed->cmd;
+	end speed_controller;
+	
+	abstract implementation speed_controller.impl
+	end speed_controller.impl;
+	
+	
+	
+end controller;

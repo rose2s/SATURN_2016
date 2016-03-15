@@ -1,0 +1,161 @@
+package platform
+public
+		with Cheddar_Properties;
+		with SEI;
+		
+	processor generic_cpu
+		features
+			net : requires bus access platform::generic_bus;
+		properties
+			Cheddar_Properties::Scheduling_Protocol=>(RMS);
+		annex EMV2 {**
+			use types error_library; 
+			use behavior error_library::stateMachine;
+		
+			error propagations
+				bindings : out propagation {SoftwareFailure, HardwareFailure};
+				processor : in  propagation {HardwareFailure};
+				
+			flows
+				fsoft : error source bindings{SoftwareFailure};
+				fhard : error path processor{HardwareFailure} -> bindings;
+	
+				f0 : error source bindings{HardwareFailure};
+				f1 : error source bindings{SoftwareFailure};		
+			end propagations;
+
+			component error behavior
+			events
+				InternalFailure : error event;
+				SoftwareError : error event;
+				HardwareError : error event;
+				Reset         : recover event;
+			transitions
+				Operational -[InternalFailure]-> Failed;
+				Operational -[SoftwareError]-> 	 Failed; 
+				Operational -[HardwareError]->   Failed;
+				Failed      -[Reset]->           Operational;
+		
+			propagations
+				normal : Operational -[]-> bindings {NoError};
+				hardfailed   : Failed -[]-> bindings{HardwareFailure};
+				softfailed   : Failed -[]-> bindings{SoftwareFailure};
+	
+			end component;	
+		**};
+		
+		end generic_cpu;
+		
+		processor implementation generic_cpu.impl
+		properties
+			Cheddar_Properties::Scheduling_Protocol=>(RMS);
+		end generic_cpu.impl;
+				
+		processor ecu extends generic_cpu
+				
+		end ecu;
+		
+		processor implementation ecu.impl
+			subcomponents
+				vp1: virtual processor sensor_processor;
+				vp2: virtual processor sensor_processor;
+			--properties
+				
+		end ecu.impl;
+		
+		--jdm added virtual processor
+		virtual processor sensor_processor
+		end sensor_processor;
+		
+		virtual processor implementation sensor_processor.impl
+		end sensor_processor.impl;
+	
+	bus generic_bus  
+		properties
+			Latency => 1 ms .. 1 ms;      
+			SEI::PowerCapacity=> 100.0W;     
+			SEI::BandWidthCapacity=>500000.0 bitsps;
+			Transmission_Time=>[Fixed=> 10ms..30ms;PerByte=>1us..10us;];
+	end generic_bus;
+	
+	bus implementation generic_bus.impl
+	
+	end generic_bus.impl;
+	
+	bus Alternative_A extends generic_bus  
+		properties
+			Latency => 1 ms .. 1 ms;      
+			SEI::PowerCapacity=> 100.0W;     
+			SEI::BandWidthCapacity=>500000.0 bitsps;
+			Transmission_Time=>[Fixed=> 10ms..30ms;PerByte=>1us..10us;];
+	end Alternative_A;
+	
+	bus implementation Alternative_A.impl
+	
+	end Alternative_A.impl;
+	
+	bus Alternative_B extends generic_bus  
+		properties
+			Latency => 1 ms .. 1 ms;      
+			SEI::PowerCapacity=> 100.0W;     
+			SEI::BandWidthCapacity=>500000.0 bitsps;
+			Transmission_Time=>[Fixed=> 10ms..30ms;PerByte=>1us..10us;];
+	end  Alternative_B;
+	
+	bus implementation  Alternative_B.impl
+	
+	end  Alternative_B.impl;
+	
+	
+	
+	
+	
+--jdm added virtual buses
+	virtual bus sensor_data_bus  
+		properties
+			Latency => 1 Ms .. 6 Ms;  
+			             
+	end sensor_data_bus;
+	
+	bus CAN extends generic_bus
+	end CAN;
+
+	-- memory declaration
+	memory Ram
+		features
+			BA: requires bus access generic_bus;
+		properties
+      		SEI::RAMCapacity => 512.0 MByte;
+      		SEI::ROMCapacity => 1024.0 MByte;
+		
+		annex EMV2 {**
+			use types error_library; 
+			use behavior error_library::stateMachine;
+		
+			error propagations
+				bindings  : out propagation {SoftwareFailure, HardwareFailure};
+				memory    : in  propagation {HardwareFailure};
+			flows
+				fsoft : error source bindings{SoftwareFailure};
+				fhard : error path memory{HardwareFailure} -> bindings;
+			end propagations;
+		
+			component error behavior
+			events
+				SoftwareFailure : error event;
+			transitions
+				Operational -[SoftwareFailure]-> Failed;
+			propagations
+				normal : Operational -[]-> bindings {NoError};
+				p2     : Failed      -[]-> bindings{SoftwareFailure};
+			end component;
+		**};  
+		
+		
+		
+	end Ram;
+	
+	memory implementation Ram.impl
+	end Ram.impl;
+	
+end platform;

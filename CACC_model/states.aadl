@@ -1,0 +1,119 @@
+--This package defines some basic state machines for the three levels of controller.
+--it is used as the basis for doing further work.
+--After building these the "real" ones are built more compactly
+
+package states
+public
+   with Base_Types;
+      
+   system controller_interface
+      features
+             driverSelection:in data port Base_Types::Integer;
+             targetSpeed: 	 in data port Base_Types::Integer;
+             actualSpeed:	 in data port Base_Types::Integer;
+             gapLimit: 		 in data port Base_Types::Integer;
+             gap: 			 in data port Base_Types::Integer;
+             radio: 		 in data port;
+        	
+   end controller_interface;
+  
+   system controller extends controller_interface 
+            annex agree  {**
+       			guarantee "targetSpeed>=0" : targetSpeed >= 0 ;
+				guarantee "actualSpeed>=0" : actualSpeed >= 0 ;
+				guarantee "actualSpeed<=targetSpeed" : actualSpeed <= targetSpeed ;
+				guarantee "gapLimit>0" : gapLimit > 0 ;
+				guarantee "gap>0" : gap > 0 ;
+				guarantee "gap<=gapLimit" : gap<=gapLimit;
+		**};
+   end controller;
+  
+   system implementation controller.impl
+   subcomponents
+     cc:   system cc.impl   in modes(ccMode);
+     acc:  system acc.impl  in modes(accMode);
+     cacc: system cacc.impl in modes(caccMode);
+   modes
+     ccMode:   initial mode;
+     accMode:  mode;
+     caccMode: mode;
+                                          
+   end controller.impl;
+  
+   system cc extends controller_interface
+   	annex agree  {**
+       			guarantee "targetSpeed>=0" : targetSpeed>=0 ;
+				guarantee "actualSpeed>=0" : actualSpeed>=0 ;
+				guarantee "actualSpeed<=targetSpeed" : actualSpeed<=targetSpeed ;
+				guarantee "gapLimit>0" : gapLimit>0 ;
+				guarantee "gap>0" : gap>0 ;
+		**};              
+   end cc;
+  
+   system implementation cc.impl
+   annex behavior_specification{**
+   	states
+          steady: 		initial state;
+          accelerating: state;
+   transitions
+          steady-[actualSpeed = targetSpeed]->steady;
+          steady-[actualSpeed < targetSpeed]->accelerating;
+          accelerating-[actualSpeed = targetSpeed]->steady;
+          
+   **};              
+   end cc.impl;
+  
+   system acc extends controller_interface    
+   	annex agree  {**
+       			guarantee "targetSpeed>=0" : targetSpeed>=0 ;
+				guarantee "actualSpeed>=0" : actualSpeed>=0 ;
+				guarantee "gapLimit>0" : gapLimit>0 ;
+				guarantee "gap>0" : gap>0 ;
+				guarantee "gap<=gapLimit" : gap<=gapLimit;
+		**};        
+   end acc;
+  
+   system implementation acc.impl  
+   	 annex behavior_specification{**
+	   	states
+	       steady: 		 initial state;
+	       accelerating: state;
+	       braking: 	 state;
+	    transitions
+	      steady-[actualSpeed = targetSpeed]->steady;
+          steady-[actualSpeed < targetSpeed]->accelerating;
+          steady-[actualSpeed > targetSpeed]->braking;
+          accelerating-[actualSpeed = targetSpeed]->steady;
+          braking-[actualSpeed = targetSpeed]->steady;
+          steady-[gap < gapLimit]->braking;
+          accelerating-[gap < gapLimit]->braking;
+	   **};            
+   end acc.impl;
+  
+   system cacc extends controller_interface 
+   	annex agree  {**
+       			guarantee "targetSpeed>=0" : targetSpeed>=0 ;
+				guarantee "actualSpeed>=0" : actualSpeed>=0 ;
+				guarantee "gapLimit>0" : gapLimit>0 ;
+				guarantee "gap>0" : gap>0 ;
+				guarantee "gap<=gapLimit" : gap<=gapLimit ;
+		**};             
+   end cacc;
+  
+   system implementation cacc.impl 
+   	annex behavior_specification{**
+	   	states
+	       steady: 		 initial state;
+	       accelerating: state;
+	       braking: 	 state;
+	    transitions
+	      steady-[actualSpeed = targetSpeed]->steady;
+          steady-[actualSpeed < targetSpeed]->accelerating;
+          steady-[actualSpeed > targetSpeed]->braking;
+          accelerating-[actualSpeed = targetSpeed]->steady;
+          braking-[actualSpeed = targetSpeed]->steady;
+          steady-[gap < gapLimit]->braking;
+          accelerating-[gap < gapLimit]->braking;
+	   **};             
+   end cacc.impl;        
+end states;

@@ -1,0 +1,79 @@
+package data_types
+public 
+	with data_model, base_types;
+
+	data speed
+		
+		--0 to 200 mph
+		properties
+			data_model::Data_Representation=>float;
+	end speed;
+	
+	
+	data distance extends base_types::unsigned_32
+	end distance;
+	
+	data gps_longitude
+		--(-180 to 180 range of longitude values)
+		properties
+			data_model::Data_Representation=>float;
+			Data_Size=>16 bits;
+	end gps_longitude;
+	
+	data gps_latitude
+		--(-90 to 90 range of longitude values)
+		properties
+			data_model::Data_Representation=>float;
+			Data_Size=>16 bits;
+	end gps_latitude;
+	
+	data gps_Position 
+	end gps_Position;
+	
+	data implementation gps_Position.impl
+		subcomponents
+			y:  data gps_longitude;
+			x:  data gps_latitude;
+	end gps_Position.impl;
+	
+	data autonomy_level_type
+		properties
+			data_model::data_representation => enum;
+			data_model::enumerators => ("cc", "acc", "cacc");
+			Data_Size => 3 bits;
+	end autonomy_level_type;
+
+	data radar_info
+	end radar_info;
+	
+	data alert
+	end alert;
+	
+	data picture 
+		properties
+			data_size => 600 KByte;
+			data_model::data_representation => array;
+	end picture;
+	
+	data cmd
+		properties
+			data_model::data_representation => enum;
+			data_model::enumerators => ("increase", "decrease", "off", "on");
+			Data_Size => 4 bits;
+	end cmd;
+	
+	
+	data file
+		properties
+			data_model::data_representation => String;
+	end file;
+	
+	data boolean
+		properties
+			data_size => 1 bits;
+	end boolean;
+	
+	
+	
+	
+end data_types;

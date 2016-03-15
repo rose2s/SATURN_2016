@@ -1,0 +1,293 @@
+--This package defines a set of abstract components
+--It includes an abstract integrated product
+--abstract sensors are defined in the sensor package
+--defines a user interface
+package abstracts
+public
+	with sensor;
+	with controller;
+	with data_types;
+	with error_library;
+	with Base_Types;
+	
+	abstract cacc 
+	end cacc;
+	
+	abstract implementation cacc.devices
+		subcomponents 
+			radar_sensor:  			abstract sensor::generic_sensor.impl;	
+			radar_handler:			abstract sensor::generic_sensor_handler.impl;		
+			gps:					abstract sensor::generic_sensor.impl;
+			gps_handler:			abstract sensor::generic_sensor_handler.impl;					
+			camera_sensor:			abstract sensor::generic_sensor.impl;
+			camera_handler:			abstract sensor::generic_sensor_handler.impl;			
+			speedometer:			abstract sensor::generic_sensor.impl;	
+			speedometer_handler:	abstract sensor::generic_sensor_handler.impl;		
+			user_interface:			abstract user_interface.impl;					
+			interface_controller:	abstract interface_controller.impl;		
+			vehicle_controller:		abstract controller::generic_controller.threads;
+			logger: 				abstract logger.impl;
+			throttle_actuator:		abstract throttle_actuator.impl;
+			brake_actuator:			abstract brake.impl;
+			speed_controller:		abstract controller::speed_controller.impl;				
+			
+		connections
+			radar_handler_conn: 			port radar_sensor.sensor_data_out->radar_handler.sensor_data_in;
+			radar_conn: 					port radar_handler.sensor_data_out->vehicle_controller.sensor1_data_in;
+			camera_handler_conn: 			port camera_sensor.sensor_data_out->camera_handler.sensor_data_in;
+			camera_conn: 					port camera_handler.sensor_data_out->vehicle_controller.sensor2_data_in;
+			gps_handler_conn: 				port gps.sensor_data_out->gps_handler.sensor_data_in;
+			gps_conn: 						port gps_handler.sensor_data_out->vehicle_controller.sensor3_data_in;
+			speedometer_handler_conn: 		port speedometer.sensor_data_out->speedometer_handler.sensor_data_in;
+			speedometer_conn:				port speedometer_handler.sensor_data_out->vehicle_controller.sensor4_data_in;
+			controller_intController_conn: 	port vehicle_controller.feedback->interface_controller.cmd_con_in;
+			intController_UI_conn: 			port interface_controller.cmd_con_out->user_interface.cmd_con_in;
+			logger_radar_conn: 			    port radar_handler.logger_out->logger.file;
+			logger_camera_conn: 			port camera_handler.logger_out->logger.file;
+			logger_gps_conn: 				port gps_handler.logger_out->logger.file;
+			logger_speedometer_conn: 		port speedometer_handler.logger_out->logger.file;
+			logger_UI_conn: 				port user_interface.logger_out->logger.file;
+			
+			UI_intController_conn:			feature group user_interface.UI_ports->interface_controller.UI_inverse_ports;
+			UI_controller_conn:				feature group interface_controller.UI_ports -> vehicle_controller.UI_inverse_ports;
+			
+			speed_controller_conn:			port vehicle_controller.current_speed -> speed_controller.current_speed;
+			brake_conn: 					port speed_controller.cmd -> brake_actuator.cmd;
+			throttle_conn: 					port speed_controller.cmd -> throttle_actuator.cmd;
+			
+			
+		flows
+			-- sensor's info to logger
+			etef0 : end to end flow radar_sensor.sensor_source -> radar_handler_conn -> radar_handler.sensor_logger_path -> logger_radar_conn-> logger.logger_sink; 
+			etef1 : end to end flow camera_sensor.sensor_source -> camera_handler_conn -> camera_handler.sensor_logger_path-> logger_camera_conn -> logger.logger_sink; 
+			etef2 : end to end flow gps.sensor_source -> gps_handler_conn -> gps_handler.sensor_logger_path -> logger_gps_conn -> logger.logger_sink; 
+			etef3 : end to end flow speedometer.sensor_source -> speedometer_handler_conn -> speedometer_handler.sensor_logger_path -> logger_speedometer_conn -> logger.logger_sink;                    
+			etef4 : end to end flow user_interface.logger_source -> logger_UI_conn -> logger.logger_sink; 
+			
+			-- sensor - controller - brake actuators
+			etef5 : end to end flow radar_sensor.sensor_source -> radar_handler_conn -> radar_handler.sensor_path -> radar_conn ->
+			                         vehicle_controller.controller_path0a -> speed_controller_conn -> 
+			                        speed_controller.speed_path -> brake_conn -> brake_actuator.brake_sink;
+			etef6 : end to end flow camera_sensor.sensor_source -> camera_handler_conn -> camera_handler.sensor_path -> camera_conn ->
+			                         vehicle_controller.controller_path1a -> speed_controller_conn -> 
+			                        speed_controller.speed_path -> brake_conn -> brake_actuator.brake_sink;
+			etef7 : end to end flow gps.sensor_source -> gps_handler_conn -> gps_handler.sensor_path -> gps_conn ->
+			                         vehicle_controller.controller_path2a -> speed_controller_conn -> 
+			                        speed_controller.speed_path -> brake_conn -> brake_actuator.brake_sink;
+			etef8 : end to end flow speedometer.sensor_source -> speedometer_handler_conn -> speedometer_handler.sensor_path -> speedometer_conn ->
+			                         vehicle_controller.controller_path3a -> speed_controller_conn -> 
+			                        speed_controller.speed_path -> brake_conn -> brake_actuator.brake_sink;    
+			
+			-- sensor - controller - throttle actuator
+			etef9 : end to end flow radar_sensor.sensor_source -> radar_handler_conn -> radar_handler.sensor_path -> radar_conn ->
+			                         vehicle_controller.controller_path0a -> speed_controller_conn -> 
+			                        speed_controller.speed_path -> throttle_conn -> throttle_actuator.throttle_sink;
+			etef10 : end to end flow camera_sensor.sensor_source -> camera_handler_conn -> camera_handler.sensor_path -> camera_conn ->
+			                         vehicle_controller.controller_path1a -> speed_controller_conn -> 
+			                        speed_controller.speed_path -> throttle_conn -> throttle_actuator.throttle_sink;
+			etef11 : end to end flow gps.sensor_source -> gps_handler_conn -> gps_handler.sensor_path -> gps_conn ->
+			                         vehicle_controller.controller_path2a -> speed_controller_conn -> 
+			                        speed_controller.speed_path -> throttle_conn -> throttle_actuator.throttle_sink;
+			etef12 : end to end flow speedometer.sensor_source -> speedometer_handler_conn -> speedometer_handler.sensor_path -> speedometer_conn ->
+			                         vehicle_controller.controller_path3a -> speed_controller_conn -> 
+			                        speed_controller.speed_path -> throttle_conn -> throttle_actuator.throttle_sink;
+			                         
+			-- sensors - controller - interface controller  - UI
+			etef13 : end to end flow radar_sensor.sensor_source -> radar_handler_conn -> radar_handler.sensor_path -> radar_conn ->
+			                         vehicle_controller.controller_path0b -> controller_intController_conn ->
+			                        interface_controller.cmd_path1-> intController_UI_conn-> user_interface.cmd_sink;
+			etef14 : end to end flow camera_sensor.sensor_source -> camera_handler_conn -> camera_handler.sensor_path -> camera_conn ->
+			                         vehicle_controller.controller_path1b  -> controller_intController_conn ->
+			                        interface_controller.cmd_path1->intController_UI_conn-> user_interface.cmd_sink;
+			etef15 : end to end flow gps.sensor_source -> gps_handler_conn -> gps_handler.sensor_path -> gps_conn ->
+			                        vehicle_controller.controller_path2b  -> controller_intController_conn ->
+			                        interface_controller.cmd_path1->intController_UI_conn-> user_interface.cmd_sink;
+			etef16 : end to end flow speedometer.sensor_source -> speedometer_handler_conn -> speedometer_handler.sensor_path -> speedometer_conn ->
+			                        vehicle_controller.controller_path3b  -> controller_intController_conn ->
+			                        interface_controller.cmd_path1->intController_UI_conn-> user_interface.cmd_sink;
+			                        		                
+--			-- user interface to controller               
+--			etef17 : end to end flow user_interface.UI_source -> UI_intController_conn ->
+--			        interface_controller.cmd_path0 -> UI_controller_conn -> vehicle_controller.UI_sink;   
+                 		                  		                   		                   		                   		                              
+		properties
+			latency => 5  ms .. 10 ms applies to etef0, etef1, etef2, etef3, etef4;
+			latency => 20 ms .. 30 ms applies to etef5, etef6, etef7, etef8, etef9, etef10, etef11, etef12;
+			latency => 20 ms .. 30 ms applies to etef13, etef14, etef15, etef16;
+	end cacc.devices;
+	
+	-- device user_interface declaration
+	abstract user_interface
+		features
+			logger_out: 		out data port data_types::file;
+			cmd_con_in:			in event data port data_types::cmd;
+			UI_ports: 			feature group UI_ports;
+		flows
+			logger_source:  		flow source logger_out; 
+			UI_source:  			flow source UI_ports; 
+			cmd_sink:				flow sink cmd_con_in;
+		properties
+			latency => 1 ms .. 3 ms applies to logger_source, UI_source;
+	 
+		annex AGREE {**
+			--assume "system is on": cmd_con_in = "on"; 
+			guarantee "speed will only increase/decrease if turned on": 
+			UI_ports.turn_on_off = false or (UI_ports.turn_on_off = true and UI_ports.set_speed_up = true) 
+ 										 or (UI_ports.turn_on_off = true and UI_ports.set_speed_down = true); 
+ 			guarantee "level will only change if turned on": 
+			UI_ports.turn_on_off = false or (UI_ports.turn_on_off = true and UI_ports.set_level_up   = true)
+										 or (UI_ports.turn_on_off = true and UI_ports.set_level_down = true); 
+ 			guarantee "gap will only set if turned on": 
+			UI_ports.turn_on_off = false or (UI_ports.turn_on_off = true and UI_ports.set_gap = true);	
+ 			guarantee "pause will only set if turned on": 
+			UI_ports.turn_on_off = false or (UI_ports.turn_on_off = true and UI_ports.set_pause = true);	
+ 		
+ 		**};
+ 			
+	end user_interface;
+	
+	abstract implementation user_interface.impl
+	end user_interface.impl;
+	
+	-- FEATURE GROUP for user inputs
+	feature group UI_ports
+		features
+			turn_on_off: 	out event data port Base_Types::boolean;
+			set_speed_up: 	out event data port Base_Types::boolean;
+			set_speed_down: out event data port Base_Types::boolean;
+			set_level_up: 	out event data port Base_Types::boolean;
+			set_level_down:	out event data port Base_Types::boolean;
+			set_pause: 		out event data port Base_Types::boolean;
+			set_gap: 	    out event data port Base_Types::boolean;		
+	end UI_ports;
+	
+	-- process interface controller declaration
+	abstract interface_controller
+		features
+			UI_ports: 			feature group UI_ports;
+			UI_inverse_ports:	feature group inverse of UI_ports;
+			cmd_con_in:   		in event data port data_types::cmd;
+			cmd_con_out: 		out event data port data_types::cmd;
+
+		flows
+			cmd_path0:			flow path UI_inverse_ports->UI_ports;
+			cmd_path1:			flow path cmd_con_in -> cmd_con_out;
+		
+		properties
+			latency => 5 ms .. 7 ms applies to cmd_path0,cmd_path1;
+	end interface_controller;
+	
+	abstract implementation interface_controller.impl
+	end interface_controller.impl;
+	
+		-- device logger declaration
+	abstract logger
+		features
+			file: in data port data_types::file;		
+		flows 
+			logger_sink : flow sink file;
+		properties
+			latency =>5 ms .. 7 ms applies to logger_sink;
+		
+		annex EMV2 {**
+			use types error_library;
+			use behavior error_library::stateMachine;
+		
+			error propagations
+				file : in propagation {BadValue, LateValue};
+			flows
+				ef0 : error sink file{BadValue, LateValue};
+			end propagations;
+			
+			component error behavior
+			events
+				BadRead :  error  event;
+				recoverEvent: recover event;
+			transitions
+				t0 : Operational -[file{BadValue, LateValue}]-> Failed;
+				t1 : Operational  -[BadRead]->                   Failed;
+				t2 : Failed      -[recoverEvent]->      		Operational;
+			end component;
+		**};
+	end logger;
+	
+	abstract implementation logger.impl	
+	end logger.impl;
+	
+	-- ACTUATOR: throttle
+	abstract  throttle_actuator
+		features
+			cmd: 	   in data port data_types::cmd;
+			failed:  out event port;
+		flows
+			throttle_sink: flow sink cmd;
+		properties
+			Period => 2ms;
+	
+		annex EMV2 {**
+			use types error_library;
+			use behavior error_library::stateMachine;
+		
+			error propagations
+				cmd :    in propagation {NoValue,InvalidValue};
+				failed : in propagation {NoValue,InvalidValue};
+			flows
+				ef0 : error sink failed{NoValue,InvalidValue};
+			end propagations;
+			
+			component error behavior
+			events
+				pump_throttle : recover event;
+			transitions
+				t0 : Operational -[cmd{NoValue}]->      Failed;
+				t1 : Operational -[cmd{InvalidValue}]-> Failed;
+				t2 : Failed -[pump_throttle]->          Operational;
+			end component;
+		**};
+
+		
+	end throttle_actuator;
+	
+	abstract implementation throttle_actuator.impl
+	end throttle_actuator.impl;
+	
+	-- ACTUATOR: break
+	abstract  brake
+		features
+			cmd:            in data port data_types::cmd;
+			brake_hardware: in event port;
+			brake_failed:  out event data port;
+		flows
+			brake_sink: flow sink cmd;
+		properties
+			Period => 2ms;
+		annex EMV2 {**
+			use types 	 error_library;
+			use behavior error_library::stateMachine;
+		    
+			error propagations
+				cmd : 			in propagation {NoValue,InvalidValue};
+				brake_hardware:	in propagation {NoValue,InvalidValue};
+				brake_failed:  out propagation {NoValue, BadValue}; -- send to controller
+			flows
+				ef0 : error sink brake_hardware {NoValue,InvalidValue};
+				ef1 : error source brake_failed {NoValue, BadValue};
+			end propagations;
+				
+			component error behavior
+			events
+				brake_doesnt_work   :   error event;
+				pump_brake 			: recover event;
+			transitions
+				t0 : Operational -[cmd{NoValue}]->     	Failed;
+				t1 : Operational -[cmd{InvalidValue}]-> Failed;
+				t2 : Operational -[brake_doesnt_work]-> Failed;
+				t3 : Failed      -[pump_brake]-> 		Operational;	
+			end component;
+		**};
+	end brake;
+	
+	abstract implementation brake.impl
+	end brake.impl;
+	
+end abstracts;

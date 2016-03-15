@@ -1,0 +1,182 @@
+--This package defines a set of devices that are the actuators for the control loop and the vehicle user inputs
+package devices
+public
+	with abstracts;
+	with data_types;
+	with sensor;
+	with SEI;
+	with platform;
+	with EMV2;
+	
+	-- device throttle
+	device throttle_actuator_rt extends abstracts::throttle_actuator
+		features
+			cmdThrottle: 	   in data port data_types::cmd;
+			failed: refined to  out event port;
+		
+	end throttle_actuator_rt;
+	
+	device implementation throttle_actuator_rt.impl extends abstracts::throttle_actuator.impl
+	end throttle_actuator_rt.impl;
+	
+	-- device brake
+	device brake_rt extends abstracts::brake
+		features
+		  --cmdThrottle:        in data port data_types::cmd;
+			cmdSpeed: 	   in data port data_types::speed;
+			failed: out event port;
+	end brake_rt;
+	
+	device implementation brake_rt.impl extends abstracts::brake.impl
+	end brake_rt.impl;
+	
+	-- radar
+	device radarSensor_rt extends sensor::generic_sensor
+		features
+			sensor_data_out: refined to out data port data_types::radar_info;
+			BA: requires bus access platform::generic_bus{SEI::PowerBudget=>5.0W;};
+		
+		annex EMV2 {**
+			use types error_library;	
+				error propagations
+				sensor_data_out : out propagation {InvalidValue};
+			flows
+				ef0 : error source sensor_data_out{InvalidValue};
+			end propagations;
+		
+			properties	
+				emv2::hazards => 
+					([	failure => "InvalidValue";
+						description => "Invalid distance sent by the radar";
+					])
+					applies to sensor_data_out.invalidvalue;
+		**};
+	end radarSensor_rt;
+	
+	device implementation radarSensor_rt.impl extends sensor::generic_sensor.impl
+		
+	end radarSensor_rt.impl;
+	
+	
+	system radar_handler extends sensor::generic_sensor_handler
+	end radar_handler;
+	
+	system implementation radar_handler.impl extends sensor::generic_sensor_handler.impl
+	end radar_handler.impl;
+	
+	-- camera
+	device cameraSensor_rt extends sensor::generic_sensor
+		features
+			sensor_data_out: refined to out data port data_types::picture;
+			BA: requires bus access platform::generic_bus{SEI::PowerBudget=>5.0W;};
+			
+		annex EMV2 {**
+			use types Error_library; 
+		
+			error propagations
+				sensor_data_out : out propagation {InvalidValue};
+			flows
+				ef0 : error source sensor_data_out{InvalidValue};
+			end propagations;
+			properties
+				emv2::hazards => 
+					([	failure => "InvalidValue";	
+						description => "Invalid data from the camera";
+						comment => "Would impact the detection of obstacle if the camera is not working as well";
+					])
+			applies to sensor_data_out.novalue;
+
+		**};
+	end cameraSensor_rt;
+	
+	device implementation cameraSensor_rt.impl extends sensor::generic_sensor.impl
+		
+	end cameraSensor_rt.impl;
+	
+	
+	system camera_handler extends sensor::generic_sensor_handler
+	end camera_handler;
+	
+	system implementation camera_handler.impl extends sensor::generic_sensor_handler.impl
+	end camera_handler.impl;
+	
+	-- gps
+	device gps_rt extends sensor::generic_sensor
+		features
+			gps_position: in data port data_types::gps_Position;
+			sensor_data_out: refined to out data port data_types::gps_Position;
+			BA: requires bus access platform::generic_bus{SEI::PowerBudget=>5.0W;};
+			
+		
+			
+		annex EMV2 {**
+			use types error_library;	
+				error propagations
+				sensor_data_out : out propagation {InvalidValue};
+			flows
+				ef0 : error source sensor_data_out{InvalidValue};
+			end propagations;
+		
+			properties	
+				emv2::hazards => 
+					([	failure => "InvalidValue";
+						description => "Invalid data sent by the gps";
+					])
+					applies to sensor_data_out.invalidvalue;
+		**};
+	end gps_rt;
+	
+	device implementation gps_rt.impl extends sensor::generic_sensor.impl
+		
+	end gps_rt.impl;
+	
+	system gps_handler extends sensor::generic_sensor_handler
+		features
+			sensor_data_out: refined to out data port data_types::gps_Position;
+	end gps_handler;
+	
+	system implementation gps_handler.impl extends sensor::generic_sensor_handler.impl
+	end gps_handler.impl;
+	
+	-- speedometer
+	device speedometer_rt extends sensor::generic_sensor
+		features
+			sensor_data_out: refined to out data port data_types::speed;
+			BA: requires bus access platform::generic_bus{SEI::PowerBudget=>5.0W;};
+		
+		annex EMV2 {**
+			use types error_library;	
+				error propagations
+				sensor_data_out : out propagation {InvalidValue};
+			flows
+				ef0 : error source sensor_data_out{InvalidValue};
+			end propagations;
+		
+			properties	
+				emv2::hazards => 
+					([	failure => "InvalidValue";
+						description => "Invalid data sent by the speedometer";
+					])
+					applies to sensor_data_out.invalidvalue;
+		**};
+	end speedometer_rt;
+	
+	device implementation speedometer_rt.impl extends sensor::generic_sensor.impl
+	end speedometer_rt.impl;
+	
+	system speedometer_handler extends sensor::generic_sensor_handler
+	end speedometer_handler;
+	
+	system implementation speedometer_handler.impl extends sensor::generic_sensor_handler.impl
+	end speedometer_handler.impl;
+	
+	-- user interface
+	device user_interface_rt extends abstracts::user_interface
+		features
+			BA: requires bus access platform::generic_bus;
+	end user_interface_rt;
+	
+	device implementation user_interface_rt.impl extends abstracts::user_interface.impl
+	end user_interface_rt.impl;
+	
+end devices;

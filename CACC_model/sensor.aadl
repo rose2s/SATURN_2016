@@ -1,0 +1,100 @@
+--aspects of the domain that can be sensed
+--may eventually define sensors for each
+--distance range
+--repetition rate
+--speed range
+--speed accuracy
+--data readout
+--power supply  7.5 - 16v
+--power consumption
+--weight < 100 g
+--bus interface CAN - 1MB/s supports 2.0 A and B
+--field of vision
+--vertical angle
+--horizontal angle
+--cycle time
+--lidar wave length 800 nm
+--radar 76-77 GHz  range 1--200m
+--laser range .3 -- 80 m
+--
+
+
+package sensor
+public
+	with EMV2;
+	with data_types;
+	with SEI;
+	
+	abstract generic_sensor
+		features
+			sensor_data_out: 	out data port;
+		flows
+			sensor_source : flow source sensor_data_out;  
+		properties
+			latency => 1 ms .. 3 ms applies to sensor_source;
+			SEI::PowerBudget=> 5.0W;		
+		
+		annex EMV2 {**
+			use types error_library; 
+		
+			error propagations
+				sensor_data_out : out propagation {NoValue};
+			flows
+				ef0 : error source sensor_data_out{NoValue};
+			end propagations;
+			properties
+				emv2::hazards => 
+					([	failure => "Novalue";	
+						description => "No data from the sensor";
+					])
+			applies to sensor_data_out.novalue;
+		**};	
+	end generic_sensor;
+		
+	abstract implementation generic_sensor.impl
+	end generic_sensor.impl;
+	
+	abstract generic_sensor_handler
+		features
+			sensor_data_in: 	in data port;
+			sensor_data_out: 	out data port;
+			logger_out: 		out data port data_types::file;
+			
+		flows
+			sensor_path :   	   flow path sensor_data_in->sensor_data_out;
+			sensor_logger_path :   flow path sensor_data_in->logger_out;
+			logger_source : 	   flow source logger_out;   
+		properties
+			latency => 1 ms .. 3 ms applies to sensor_path, logger_out;
+		
+		annex EMV2 {**
+			use types error_library; 
+			use behavior error_library::stateMachine;
+		
+			error propagations
+				logger_out		: out propagation {BadValue, LateValue};
+				sensor_data_in  : in propagation  {NoValue, BadValue, InvalidValue};
+				sensor_data_out : out propagation {NoValue, BadValue,LateValue};
+			flows
+				ef0 : error source logger_out{BadValue, LateValue};
+				ef1 : error source sensor_data_out{LateValue};
+				ef2 : error path sensor_data_in{NoValue, BadValue}->sensor_data_out{LateValue};
+			end propagations;
+			
+			component error behavior
+			events
+				BadRead    	: error event;
+				RecoverEvent: recover event;
+				
+			transitions
+				t0 : Operational -[sensor_data_in{NoValue, BadValue}]->   Failed;
+				t1 : Operational -[BadRead]-> Failed;
+				t2 : Failed      -[RecoverEvent]-> Operational;	
+			end component;
+		**};
+	end generic_sensor_handler;
+		
+	abstract implementation generic_sensor_handler.impl
+	end generic_sensor_handler.impl;
+
+end sensor;
