@@ -1,2 +1,6 @@
-# SATURN_2016
-Architecture-led pedagogical artifacts as a unifying theme
+# Tutorial SATURN_2016
+*Title:* Architecture-led pedagogical artifacts as a unifying theme
+
+*Abstract:*
+The Architecture Practices Initiative of the SEI has developed a family of domain-specific languages for system specification and verification and validation (V&V) to work in concert with the Architecture Analysis & Design Language (AADL). These languages provide support for exploring architecture’s influence in all phases of the traditional software lifecycle. Additional tools—including AGREE, Resolute, and the plugins of the Open Source AADL Tool Environment (OSATE)—supplement the domain-specific languages to provide both static and dynamic V&V capabilities. These tools establish feedback loops between requirements and architecture and between architecture and implementation, all of which are unified with V&V activities.
+In this session, attendees will see a set of pedagogical artifacts that illustrates the use of architecture information to support multiple graduate courses. All of the artifacts have been successfully used. With the ReqSpec language, requirements are explicitly linked to the development stakeholders and initial architecture information. The requirements information is linked to verification assets using the Verify language and to certification assets using the Assure language for assurance cases. A brief set of exercises will illustrate some uses of the artifacts both in instruction and development.
